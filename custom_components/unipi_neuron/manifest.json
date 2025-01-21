@@ -1,16 +1,17 @@
 {
   "domain": "unipi_neuron",
   "name": "Unipi Neuron",
-  "documentation": "https://www.home-assistant.io/integrations/unipi_neuron",
+  "documentation": "https://github.com/Timvdv/ha-unipi-neuron",
   "requirements": [
     "evok-ws-client"
   ],
   "dependencies": ["zeroconf", "ssdp"],
   "after_dependencies": ["network"],
-  "version": "0.0.5",
+  "version": "1.0.0",
   "codeowners": [
     "@marko2276",
-    "@k3rn3l3rr0r"
+    "@k3rn3l3rr0r",
+    "@Timvdv"
   ],
   "iot_class": "local_push",
   "zeroconf": [
