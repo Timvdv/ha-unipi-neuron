@@ -1,110 +1,88 @@
 """Support for Unipi product line binary sensors."""
 import logging
 
-import voluptuous as vol
-
-from homeassistant.components.binary_sensor import (
-    DEVICE_CLASSES_SCHEMA,
-    PLATFORM_SCHEMA,
-    BinarySensorEntity,
-)
-
-from homeassistant.const import (
-    CONF_DEVICE,
-    CONF_DEVICE_ID,
-    CONF_DEVICES,
-    CONF_NAME,
-    CONF_PORT
-)
-
-import homeassistant.helpers.config_validation as cv
+from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# Validation of the user's configuration
-DEVICE_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_NAME): cv.string,
-        vol.Required(CONF_DEVICE): vol.Any("input", "di"),
-        vol.Required(CONF_PORT): cv.matches_regex(r"^[1-3]_[0-1][0-9]"),
-    }
-)
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback
+):
+    """Set up Unipi binary sensors for a config entry."""
+    unipi_hub = hass.data[DOMAIN].get(entry.entry_id)
+    if not unipi_hub:
+        _LOGGER.error("No UniPi client found for entry %s", entry.title)
+        return
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_DEVICE_ID): cv.string,
-        vol.Required(CONF_DEVICES): vol.All( cv.ensure_list, [DEVICE_SCHEMA])
-    }
-)
+    sensors = []
+    for (device, circuit), value in unipi_hub.cache.items():
+        if device in ("input", "di"):
+            if isinstance(value, dict) and "alias" in value:
+                name = value["alias"]
+                if name.startswith("al_"):
+                    name = name[3:]
+            else:
+                name = f"UniPi {device} {circuit}"
+            sensors.append(UnipiBinarySensor(unipi_hub, name, circuit, device))
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Set up Binary Sensor for Unipi."""
-    _LOGGER.info("Setup platform for Unipi Binary Sensor %s", config)
-    unipi_device_name = config[CONF_DEVICE_ID]
-    binary_sensors = []
-    for sensor in config[CONF_DEVICES]:
-        binary_sensors.append(
-            UnipiBinarySensor(
-                hass.data[DOMAIN][unipi_device_name],
-                sensor[CONF_NAME],
-                sensor[CONF_PORT],
-                sensor[CONF_DEVICE],
-            )
-        )
-
-    async_add_entities(binary_sensors)
-    return
-
+    if sensors:
+        async_add_entities(sensors)
+    else:
+        _LOGGER.debug("No binary sensor devices found for UniPi '%s'", unipi_hub.name)
 
 class UnipiBinarySensor(BinarySensorEntity):
-    """Representation of binary sensors as digital input on Unipi Device."""
+    """Representation of binary sensors on UniPi Device."""
 
-    def __init__(self, unipi_hub, name, port, device):
+    def __init__(self, unipi_hub, name, circuit, device):
         """Initialize Unipi binary sensor."""
         self._unipi_hub = unipi_hub
-        self._name = name
-        self._port = port
+        self._attr_name = name
+        self._circuit = circuit
         self._device = device
         self._state = None
+        self._attr_unique_id = f"{unipi_hub.name}_{device}_{circuit}"
 
-    async def async_added_to_hass(self):
-        """Register device notification."""
-        #await self.async_initialize_device(self._ads_var, self._ads_hub.PLCTYPE_BOOL)
-        signal = f"{DOMAIN}_{self._unipi_hub._name}_{self._device}_{self._port}"
-        _LOGGER.debug("Binary Sensor: Connecting %s", signal)
-        async_dispatcher_connect(self.hass, signal, self._update_callback)
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device info so HA groups all sensors under one device."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._unipi_hub.name)},
+            name=self._unipi_hub.name,
+            manufacturer="UniPi",
+            model=self._unipi_hub._devtype,
+        )
 
     @property
     def is_on(self):
         """Return True if the entity is on."""
         return self._state
 
-    @property
-    def name(self):
-        """Return the display name of this binary sensor."""
-        return self._name
+    async def async_added_to_hass(self):
+        """Register for dispatcher signals."""
+        signal = f"{DOMAIN}_{self._unipi_hub.name}_{self._device}_{self._circuit}"
+        _LOGGER.debug("Binary Sensor '%s': Connecting signal %s", self._attr_name, signal)
+        async_dispatcher_connect(self.hass, signal, self._update_callback)
+        self._update_callback()
 
-    @property
-    def unique_id(self):
-        """Return the unique ID of this binary sensor entity."""
-        return f"{self._device}_{self._port}_at_{self._unipi_hub._name}"
-
-    # @property
-    # def device_class(self):
-    #     """Return the device class."""
-    #     return self._device
-
-    # def update(self):
-    #     """Fetch new state data for this binary sensor.
-    #     This is the only method that should fetch new data for Home Assistant.
-    #     """
-    #     _LOGGER.info("Update binary sensor %s", self._name)
-    #     self._state = self._unipi_hub.evok_state_get(self._device, self._port) == 1
-
+    @callback
     def _update_callback(self):
         """State has changed"""
-        self._state = self._unipi_hub.evok_state_get(self._device, self._port) == 1
-        self.schedule_update_ha_state()
+        raw_state = self._unipi_hub.evok_state_get(self._device, self._circuit)
+        _LOGGER.debug("Binary Sensor '%s': Raw state received: %s", self._attr_name, raw_state)
+        if isinstance(raw_state, dict):
+            # Extract the 'value' field from the dictionary
+            value = raw_state.get("value")
+        else:
+            value = raw_state
+        _LOGGER.debug("Binary Sensor '%s': Extracted value: %s", self._attr_name, value)
+        self._state = (value == 1)
+        self.async_write_ha_state()
