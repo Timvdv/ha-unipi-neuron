@@ -32,7 +32,7 @@ async def async_setup_entry(
                     name = name[3:]
             else:
                 name = f"UniPi {device} {circuit}"
-            sensors.append(UnipiBinarySensor(unipi_hub, entry.unique_id, name, circuit, device))
+            sensors.append(UnipiBinarySensor(hass, unipi_hub, entry.unique_id, name, circuit, device))
 
     if sensors:
         async_add_entities(sensors)
@@ -42,8 +42,9 @@ async def async_setup_entry(
 class UnipiBinarySensor(BinarySensorEntity):
     """Representation of binary sensors on UniPi Device."""
 
-    def __init__(self, unipi_hub, entry_unique_id, name, circuit, device):
+    def __init__(self, hass, unipi_hub, entry_unique_id, name, circuit, device):
         """Initialize Unipi binary sensor."""
+        self._hass = hass
         self._unipi_hub = unipi_hub
         self._circuit = circuit
         self._device = device
@@ -52,7 +53,7 @@ class UnipiBinarySensor(BinarySensorEntity):
         self._state = None
 
         object_id = f"unipi_{device}_{circuit}"
-        self.entity_id = generate_entity_id("binary_sensor.{}", object_id)
+        self.entity_id = generate_entity_id("binary_sensor.{}", object_id, hass=self._hass)
     @property
     def device_info(self) -> DeviceInfo:
         """Return device info so HA groups all sensors under one device."""

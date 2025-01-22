@@ -40,7 +40,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             for measurement in MEASUREMENT_MAPPING.keys():
                 if measurement in value:
                     meas_name = f"{alias} {measurement}" if alias else f"UniPi {device} {circuit} {measurement}"
-                    sensors.append(Unipi1WireSensor(unipi_hub, entry.unique_id, meas_name, device, circuit, measurement))
+                    sensors.append(Unipi1WireSensor(hass, unipi_hub, entry.unique_id, meas_name, device, circuit, measurement))
     if sensors:
         async_add_entities(sensors)
     else:
@@ -49,8 +49,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 class Unipi1WireSensor(SensorEntity):
     """Representation of a UniPi 1-Wire or temp sensor for a specific measurement."""
 
-    def __init__(self, unipi_hub, entry_unique_id, name, device, circuit, measurement):
+    def __init__(self, hass, unipi_hub, entry_unique_id, name, device, circuit, measurement):
         """Initialize the sensor."""
+        self._hass = hass
         self._unipi_hub = unipi_hub
         self._device = device
         self._circuit = circuit
@@ -63,7 +64,7 @@ class Unipi1WireSensor(SensorEntity):
         self._attr_native_value = None
 
         object_id = f"unipi_{device}_{circuit}"
-        self.entity_id = generate_entity_id("sensor.{}", object_id)
+        self.entity_id = generate_entity_id("sensor.{}", object_id, hass=self._hass)
 
     @property
     def device_info(self) -> DeviceInfo:

@@ -37,7 +37,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             else:
                 name = f"UniPi Light {device} {circuit}"
             lights.append(
-                UnipiLight(unipi_hub, entry.unique_id, name, circuit, device, mode)
+                UnipiLight(hass, unipi_hub, entry.unique_id, name, circuit, device, mode)
             )
 
     async_add_entities(lights)
@@ -47,8 +47,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 class UnipiLight(LightEntity):
     """Representation of a Light attached to a UniPi relay or digital output."""
 
-    def __init__(self, unipi_hub, entry_unique_id, name, circuit, device, mode):
+    def __init__(self, hass, unipi_hub, entry_unique_id, name, circuit, device, mode):
         """Initialize the UniPi Light."""
+        self._hass = hass
         self._unipi_hub = unipi_hub
         self._circuit = circuit
         self._device = device
@@ -57,7 +58,7 @@ class UnipiLight(LightEntity):
         self._attr_name = name
         
         object_id = f"unipi_{device}_{circuit}"
-        self.entity_id = generate_entity_id("light.{}", object_id)
+        self.entity_id = generate_entity_id("light.{}", object_id, hass=self._hass)
 
         if self._dimmable:
             self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
