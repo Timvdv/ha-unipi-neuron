@@ -1,17 +1,16 @@
 import asyncio
 import logging
 import aiohttp
-import json
 from websockets.exceptions import ConnectionClosedError
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant import config_entries
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .const import DOMAIN
 from .config_flow import UnipiNeuronConfigFlow
-
 from evok_ws_client import *
 
 _LOGGER = logging.getLogger(__name__)
@@ -62,90 +61,35 @@ def evok_state_get(self, device, circuit):
     return self.cache.get((device, circuit))
 UnipiEvokWsClient.evok_state_get = evok_state_get
 
-async def evok_receive(self):
-    try:
-        message = await self.websocket.recv()  # Fixed attribute name
-        data = json.loads(message)
-        _LOGGER.debug("Received raw message: %s, parsed: %s", message, data)
-        return data
-    except json.JSONDecodeError as e:
-        _LOGGER.error("Failed to parse message from UniPi '%s' as JSON: %s", self.name, message)
-        return None
-    except Exception as e:
-        _LOGGER.error("Unexpected error receiving message: %s", str(e))
-        return None
-
-UnipiEvokWsClient.evok_receive = evok_receive
-
-async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: int, initial_connected: bool = False):
-    from homeassistant.helpers.dispatcher import async_dispatcher_send
-
-    def evok_update_dispatch_send(dev_name, device, circuit, value):
-        _LOGGER.debug("Dispatcher signal: dev=%s circuit=%s -> %s", device, circuit, value)
-        async_dispatcher_send(hass, f"{DOMAIN}_{dev_name}_{device}_{circuit}")
-
-    first_run = initial_connected
+async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: int):
+    """Maintain websocket connection and handle messages."""
     while True:
-        if not first_run:
-            await neuron.evok_close()
-        first_run = False
+        try:
+            if not await neuron.evok_connect():
+                _LOGGER.warning("Connection failed to %s, retrying in %ds", neuron.name, reconnect_seconds)
+                await asyncio.sleep(reconnect_seconds)
+                continue
 
-        if not await neuron.evok_connect():
-            _LOGGER.warning(
-                "Could not connect to UniPi device '%s'. Retrying in %d seconds.",
-                neuron.name, reconnect_seconds
-            )
-            await asyncio.sleep(reconnect_seconds)
-            continue
+            _LOGGER.info("Connected to %s", neuron.name)
+            await neuron.evok_register_default_filter_dev()
+            await neuron.evok_full_state_sync()
 
-        _LOGGER.info("Connected to UniPi device '%s' via Evok", neuron.name)
-        await neuron.evok_full_state_sync()
-        _LOGGER.debug("Cache after full_state_sync: %s", neuron.cache)
+            def callback(dev, circuit, value):
+                async_dispatcher_send(hass, f"{DOMAIN}_{neuron.name}_{dev}_{circuit}")
 
-        while True:
-            try:
-                data = await neuron.evok_receive()
-                if data is None:
-                    continue
+            while True:
+                if not await neuron.evok_receive(handle_message=True, callback=callback):
+                    break
 
-                # Handle both list and single dict responses
-                messages = data if isinstance(data, list) else [data]
-                
-                for message in messages:
-                    # Skip non-dictionary messages
-                    if not isinstance(message, dict):
-                        _LOGGER.warning("Received non-dictionary message: %s", message)
-                        continue
-                        
-                    device = message.get("dev")
-                    circuit = message.get("circuit")
-                    value = message.get("value")
-                    
-                    if None in (device, circuit):
-                        continue
-                        
-                    neuron.cache[(device, circuit)] = message
-                    evok_update_dispatch_send(neuron.name, device, circuit, value)
+        except ConnectionClosedError:
+            _LOGGER.warning("Connection closed for %s", neuron.name)
+        except Exception as e:
+            _LOGGER.error("Unexpected error for %s: %s", neuron.name, str(e))
 
-            except ConnectionClosedError as e:
-                _LOGGER.warning(
-                    "Connection closed during receive from UniPi device '%s': %s",
-                    neuron.name, e
-                )
-                break
-            except Exception as e:
-                _LOGGER.error("Unexpected error processing message: %s", str(e), exc_info=True)
-                break
+        _LOGGER.info("Reconnecting to %s in %ds", neuron.name, reconnect_seconds)
+        await asyncio.sleep(reconnect_seconds)
 
-            if not data:
-                _LOGGER.warning(
-                    "Connection lost to UniPi device '%s'. Reconnecting in %d seconds...",
-                    neuron.name, reconnect_seconds
-                )
-                break
-            
 async def async_setup(hass: HomeAssistant, config: dict):
-    _LOGGER.debug("async_setup called.")
     hass.data.setdefault(DOMAIN, {})
 
     if DOMAIN in config:
@@ -163,40 +107,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     data = entry.data
     ip_addr = data.get("ip_address")
     dev_name = data.get("name", "UniPi")
-    dev_type = data.get("type", "CUSTOM")
     reconnect_time = data.get("reconnect_time", 30)
 
-    neuron = UnipiEvokWsClient(ip_addr, dev_type, dev_name)
+    neuron = UnipiEvokWsClient(ip_addr, data.get("type", "CUSTOM"), dev_name)
     neuron._ip_addr = ip_addr
     neuron._name = dev_name
-    neuron._devtype = dev_type
+    neuron._devtype = data.get("type", "CUSTOM")
 
     try:
-        connected = await neuron.evok_connect()
-        if not connected:
-            raise ConfigEntryNotReady(f"Could not connect to UniPi at {ip_addr}")
+        if not await neuron.evok_connect():
+            raise ConfigEntryNotReady(f"Could not connect to {ip_addr}")
+            
         await neuron.evok_full_state_sync()
-
-        _LOGGER.debug("Cache right after initial full_state_sync: %s", neuron.cache)
-
     except Exception as err:
-        raise ConfigEntryNotReady(f"Could not connect to UniPi at {ip_addr}: {err}") from err
+        raise ConfigEntryNotReady(f"Connection error: {err}") from err
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = neuron
+    hass.data[DOMAIN][entry.entry_id] = neuron
+    hass.loop.create_task(evok_connection(hass, neuron, reconnect_time))
 
-    hass.loop.create_task(evok_connection(hass, neuron, reconnect_time, initial_connected=True))
-
-    _LOGGER.debug("Forwarding setup to platforms: %s", PLATFORMS)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     neuron = hass.data[DOMAIN].pop(entry.entry_id, None)
     if neuron:
-        try:
-            await neuron.evok_close()
-        except Exception as e:
-            _LOGGER.debug("Error closing WebSocket connection: %s", str(e))
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    return unload_ok
+        await neuron.evok_close()
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
