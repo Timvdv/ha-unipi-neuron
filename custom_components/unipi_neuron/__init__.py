@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import aiohttp
+import json
 from websockets.exceptions import ConnectionClosedError
 
 from homeassistant.config_entries import ConfigEntry
@@ -61,6 +62,21 @@ def evok_state_get(self, device, circuit):
     return self.cache.get((device, circuit))
 UnipiEvokWsClient.evok_state_get = evok_state_get
 
+async def evok_receive(self):
+    try:
+        message = await self.ws.recv()
+        data = json.loads(message)
+        _LOGGER.debug("Received raw message: %s, parsed: %s", message, data)
+        return data
+    except json.JSONDecodeError as e:
+        _LOGGER.error("Failed to parse message from UniPi '%s' as JSON: %s", self.name, message)
+        return None
+    except Exception as e:
+        _LOGGER.error("Unexpected error receiving message: %s", str(e))
+        return None
+
+UnipiEvokWsClient.evok_receive = evok_receive
+
 async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: int, initial_connected: bool = False):
     from homeassistant.helpers.dispatcher import async_dispatcher_send
 
@@ -89,6 +105,9 @@ async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: in
         while True:
             try:
                 data = await neuron.evok_receive()
+                if data is None:
+                    continue
+
                 # Handle both list and single dict responses
                 messages = data if isinstance(data, list) else [data]
                 
