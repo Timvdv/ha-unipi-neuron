@@ -15,7 +15,7 @@ from evok_ws_client import *
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["binary_sensor", "light", "sensor"]
+PLATFORMS = ["binary_sensor", "light", "sensor", "cover"]
 
 def cache_getter(self):
     if not hasattr(self, '_cache'):
@@ -93,6 +93,11 @@ async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: in
                 messages = data if isinstance(data, list) else [data]
                 
                 for message in messages:
+                    # Skip non-dictionary messages
+                    if not isinstance(message, dict):
+                        _LOGGER.warning("Received non-dictionary message: %s", message)
+                        continue
+                        
                     device = message.get("dev")
                     circuit = message.get("circuit")
                     value = message.get("value")
@@ -110,7 +115,7 @@ async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: in
                 )
                 break
             except Exception as e:
-                _LOGGER.error("Unexpected error processing message: %s", str(e))
+                _LOGGER.error("Unexpected error processing message: %s", str(e), exc_info=True)
                 break
 
             if not data:
@@ -170,7 +175,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     neuron = hass.data[DOMAIN].pop(entry.entry_id, None)
     if neuron:
-        await neuron.evok_close()
-
+        try:
+            await neuron.evok_close()
+        except Exception as e:
+            _LOGGER.debug("Error closing WebSocket connection: %s", str(e))
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     return unload_ok

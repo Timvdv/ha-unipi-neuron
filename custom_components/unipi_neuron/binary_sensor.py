@@ -32,7 +32,7 @@ async def async_setup_entry(
                     name = name[3:]
             else:
                 name = f"UniPi {device} {circuit}"
-            sensors.append(UnipiBinarySensor(unipi_hub, name, circuit, device))
+            sensors.append(UnipiBinarySensor(unipi_hub, entry.unique_id, name, circuit, device))
 
     if sensors:
         async_add_entities(sensors)
@@ -42,14 +42,14 @@ async def async_setup_entry(
 class UnipiBinarySensor(BinarySensorEntity):
     """Representation of binary sensors on UniPi Device."""
 
-    def __init__(self, unipi_hub, name, circuit, device):
+    def __init__(self, unipi_hub, entry_unique_id, name, circuit, device):
         """Initialize Unipi binary sensor."""
         self._unipi_hub = unipi_hub
         self._attr_name = name
         self._circuit = circuit
         self._device = device
         self._state = None
-        self._attr_unique_id = f"{unipi_hub.name}_{device}_{circuit}"
+        self._attr_unique_id = f"{entry_unique_id}_{device}_{circuit}"
 
     @property
     def device_info(self) -> DeviceInfo:

@@ -40,7 +40,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             else:
                 name = f"UniPi Light {device} {circuit}"
             lights.append(
-                UnipiLight(unipi_hub, name, circuit, device, mode)
+                UnipiLight(unipi_hub, entry.unique_id, name, circuit, device, mode)
             )
 
     async_add_entities(lights)
@@ -50,7 +50,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 class UnipiLight(LightEntity):
     """Representation of a Light attached to a UniPi relay or digital output."""
 
-    def __init__(self, unipi_hub, name, circuit, device, mode):
+    def __init__(self, unipi_hub, entry_unique_id, name, circuit, device, mode):
         """Initialize the UniPi Light."""
         self._unipi_hub = unipi_hub
         self._attr_name = name
@@ -68,7 +68,7 @@ class UnipiLight(LightEntity):
             self._brightness = None
 
         self._state = False
-        self._attr_unique_id = f"{unipi_hub.name}_{device}_{circuit}"
+        self._attr_unique_id = f"{entry_unique_id}_{device}_{circuit}"
 
     @property
     def device_info(self) -> DeviceInfo:

@@ -38,13 +38,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         if device == "temp":
             # Single measurement sensor for temp devices
             name = alias if alias else f"UniPi {device} {circuit}"
-            sensors.append(Unipi1WireSensor(unipi_hub, name, device, circuit, measurement="temp"))
+            sensors.append(Unipi1WireSensor(unipi_hub, entry.unique_id, name, device, circuit, measurement="temp"))
         elif device == "1wdevice" and isinstance(value, dict):
             # Create separate sensors for each measurement available in the 1wdevice data
             for measurement in MEASUREMENT_MAPPING.keys():
                 if measurement in value:
                     meas_name = f"{alias} {measurement}" if alias else f"UniPi {device} {circuit} {measurement}"
-                    sensors.append(Unipi1WireSensor(unipi_hub, meas_name, device, circuit, measurement))
+                    sensors.append(Unipi1WireSensor(unipi_hub, entry.unique_id, meas_name, device, circuit, measurement))
     if sensors:
         async_add_entities(sensors)
     else:
@@ -53,14 +53,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 class Unipi1WireSensor(SensorEntity):
     """Representation of a UniPi 1-Wire or temp sensor for a specific measurement."""
 
-    def __init__(self, unipi_hub, name, device, circuit, measurement):
+    def __init__(self, unipi_hub, entry_unique_id, name, device, circuit, measurement):
         """Initialize the sensor."""
         self._unipi_hub = unipi_hub
         self._attr_name = name
         self._device = device
         self._circuit = circuit
         self._measurement = measurement
-        self._attr_unique_id = f"{unipi_hub.name}_{device}_{circuit}_{measurement}"
+        self._attr_unique_id = f"{entry_unique_id}_{device}_{circuit}_{measurement}"
         mapping_info = MEASUREMENT_MAPPING.get(measurement, {"unit": None, "device_class": None})
         self._attr_native_unit_of_measurement = mapping_info["unit"]
         self._attr_device_class = mapping_info["device_class"]
