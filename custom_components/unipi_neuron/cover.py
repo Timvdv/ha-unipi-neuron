@@ -37,9 +37,10 @@ class UnipiCover(CoverEntity):
         self._full_open_time = full_open_time
         self._tilt_change_time = tilt_change_time
         self._min_reverse_time = min_reverse_time
-        self._attr_unique_id = f"{entry_unique_id}_cover_{port_up}_{port_down}"
+        self._attr_unique_id = f"cover_{port_up}_{port_down}"
         self._attr_name = self._attr_unique_id
         self._attr_friendly_name = name
+        self._attr_name_by_user = name
         self._state = OPER_STATE_IDLE
         self._position = None
         self._tilt_value = None

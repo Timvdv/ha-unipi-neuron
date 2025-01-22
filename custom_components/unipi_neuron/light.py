@@ -53,9 +53,10 @@ class UnipiLight(LightEntity):
         self._circuit = circuit
         self._device = device
         self._dimmable = (mode == "pwm")
-        self._attr_unique_id = f"{entry_unique_id}_{device}_{circuit}"
+        self._attr_unique_id = f"{device}_{circuit}"
         self._attr_name = self._attr_unique_id
         self._attr_friendly_name = name
+        self._attr_name_by_user = name
 
         if self._dimmable:
             self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
