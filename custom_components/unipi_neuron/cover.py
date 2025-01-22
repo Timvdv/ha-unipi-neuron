@@ -10,7 +10,7 @@ from homeassistant.components.cover import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo, generate_entity_id
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.event import async_call_later
@@ -44,6 +44,9 @@ class UnipiCover(CoverEntity):
         self._tilt_value = None
         self._time_last_movement_start = 0
         self._stop_cover_timer = None
+
+        object_id = f"cover_{port_up}_{port_down}"
+        self.entity_id = generate_entity_id("cover.{}", object_id)
 
     @property
     def device_info(self) -> DeviceInfo:

@@ -8,7 +8,7 @@ from homeassistant.components.light import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo, generate_entity_id
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from websockets.exceptions import ConnectionClosedError
@@ -56,6 +56,8 @@ class UnipiLight(LightEntity):
         self._attr_unique_id = f"{device}_{circuit}"
         self._attr_name = name
         
+        object_id = f"unipi_{device}_{circuit}"
+        self.entity_id = generate_entity_id("light.{}", object_id)
 
         if self._dimmable:
             self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}

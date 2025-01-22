@@ -3,7 +3,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo, generate_entity_id
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
@@ -61,6 +61,9 @@ class Unipi1WireSensor(SensorEntity):
         self._attr_native_unit_of_measurement = mapping_info["unit"]
         self._attr_device_class = mapping_info["device_class"]
         self._attr_native_value = None
+
+        object_id = f"unipi_{device}_{circuit}"
+        self.entity_id = generate_entity_id("sensor.{}", object_id)
 
     @property
     def device_info(self) -> DeviceInfo:

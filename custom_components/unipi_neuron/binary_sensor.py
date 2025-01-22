@@ -4,7 +4,7 @@ import logging
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo, generate_entity_id
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
@@ -51,6 +51,8 @@ class UnipiBinarySensor(BinarySensorEntity):
         self._attr_name = name
         self._state = None
 
+        object_id = f"unipi_{device}_{circuit}"
+        self.entity_id = generate_entity_id("binary_sensor.{}", object_id)
     @property
     def device_info(self) -> DeviceInfo:
         """Return device info so HA groups all sensors under one device."""
