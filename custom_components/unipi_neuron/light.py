@@ -17,7 +17,7 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-LIGHT_DEVICES = ("relay", "led", "ro", "do")  # you might refine this to only certain modes
+LIGHT_DEVICES = ("relay", "led", "ro", "do")
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     """Set up the Unipi Lights from a config entry."""
@@ -27,12 +27,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         return
 
     lights = []
-    # For demonstration, let's parse from the Evok cache
     for (device, circuit), value in unipi_hub.cache.items():
         if device in LIGHT_DEVICES:
-            # We'll guess that if the mode is "PWM", it's dimmable, else on_off
             mode = "on_off"
-            # For example, do/pwm might be dimmable. Adjust logic as needed.
             if isinstance(value, dict) and "alias" in value:
                 name = value["alias"]
                 if name.startswith("al_"):
@@ -53,10 +50,12 @@ class UnipiLight(LightEntity):
     def __init__(self, unipi_hub, entry_unique_id, name, circuit, device, mode):
         """Initialize the UniPi Light."""
         self._unipi_hub = unipi_hub
-        self._attr_name = name
         self._circuit = circuit
         self._device = device
         self._dimmable = (mode == "pwm")
+        self._attr_unique_id = f"{entry_unique_id}_{device}_{circuit}"
+        self._attr_name = self._attr_unique_id
+        self._attr_friendly_name = name
 
         if self._dimmable:
             self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
@@ -68,8 +67,7 @@ class UnipiLight(LightEntity):
             self._brightness = None
 
         self._state = False
-        self._attr_unique_id = f"{entry_unique_id}_{device}_{circuit}"
-        self._attr_friendly_name = self._attr_unique_id
+
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information for this entity to show up as a device."""

@@ -31,7 +31,6 @@ class UnipiCover(CoverEntity):
     def __init__(self, unipi_hub, entry_unique_id, name, port_up, port_down, full_close_time, full_open_time, tilt_change_time, min_reverse_time):
         """Initialize the cover."""
         self._unipi_hub = unipi_hub
-        self._attr_name = name
         self._port_up = port_up
         self._port_down = port_down
         self._full_close_time = full_close_time
@@ -39,12 +38,13 @@ class UnipiCover(CoverEntity):
         self._tilt_change_time = tilt_change_time
         self._min_reverse_time = min_reverse_time
         self._attr_unique_id = f"{entry_unique_id}_cover_{port_up}_{port_down}"
+        self._attr_name = self._attr_unique_id
+        self._attr_friendly_name = name
         self._state = OPER_STATE_IDLE
         self._position = None
         self._tilt_value = None
         self._time_last_movement_start = 0
         self._stop_cover_timer = None
-        self._attr_friendly_name = self._attr_unique_id
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -153,21 +153,6 @@ async def async_setup_entry(
         _LOGGER.error("No UniPi client found for entry %s", entry.title)
         return
 
-    # In real implementation you would get cover configs from entry data
-    # For demo purposes we'll create one hardcoded cover
-    covers = [
-        UnipiCover(
-            unipi_hub=unipi_hub,
-            entry_unique_id=entry.unique_id,
-            name="Example Cover",
-            port_up="1_01",
-            port_down="1_02",
-            full_close_time=40,
-            full_open_time=40,
-            tilt_change_time=1.5,
-            min_reverse_time=1
-        )
-    ]
-    
+    covers = []
     async_add_entities(covers)
     _LOGGER.debug("Added %d UniPi covers for entry '%s'", len(covers), entry.title)

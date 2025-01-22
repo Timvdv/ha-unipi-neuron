@@ -45,12 +45,12 @@ class UnipiBinarySensor(BinarySensorEntity):
     def __init__(self, unipi_hub, entry_unique_id, name, circuit, device):
         """Initialize Unipi binary sensor."""
         self._unipi_hub = unipi_hub
-        self._attr_name = name
         self._circuit = circuit
         self._device = device
         self._state = None
         self._attr_unique_id = f"{entry_unique_id}_{device}_{circuit}"
-        self._attr_friendly_name = self._attr_unique_id
+        self._attr_name = self._attr_unique_id
+        self._attr_friendly_name = name
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -80,7 +80,6 @@ class UnipiBinarySensor(BinarySensorEntity):
         raw_state = self._unipi_hub.evok_state_get(self._device, self._circuit)
         _LOGGER.debug("Binary Sensor '%s': Raw state received: %s", self._attr_name, raw_state)
         if isinstance(raw_state, dict):
-            # Extract the 'value' field from the dictionary
             value = raw_state.get("value")
         else:
             value = raw_state

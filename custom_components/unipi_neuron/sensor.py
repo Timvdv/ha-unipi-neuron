@@ -11,7 +11,6 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# Mapping for measurement types to unit and device_class
 MEASUREMENT_MAPPING = {
     "temp": {"unit": "°C", "device_class": "temperature"},
     "humidity": {"unit": "%", "device_class": "humidity"},
@@ -27,7 +26,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         return
 
     sensors = []
-    # Create sensors for 'temp' or '1wdevice' from the cache
     for (device, circuit), value in unipi_hub.cache.items():
         alias = None
         if isinstance(value, dict) and "alias" in value:
@@ -36,11 +34,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                 alias = alias[3:]
 
         if device == "temp":
-            # Single measurement sensor for temp devices
             name = alias if alias else f"UniPi {device} {circuit}"
             sensors.append(Unipi1WireSensor(unipi_hub, entry.unique_id, name, device, circuit, measurement="temp"))
         elif device == "1wdevice" and isinstance(value, dict):
-            # Create separate sensors for each measurement available in the 1wdevice data
             for measurement in MEASUREMENT_MAPPING.keys():
                 if measurement in value:
                     meas_name = f"{alias} {measurement}" if alias else f"UniPi {device} {circuit} {measurement}"
@@ -56,16 +52,16 @@ class Unipi1WireSensor(SensorEntity):
     def __init__(self, unipi_hub, entry_unique_id, name, device, circuit, measurement):
         """Initialize the sensor."""
         self._unipi_hub = unipi_hub
-        self._attr_name = name
         self._device = device
         self._circuit = circuit
         self._measurement = measurement
         self._attr_unique_id = f"{entry_unique_id}_{device}_{circuit}_{measurement}"
+        self._attr_name = self._attr_unique_id
+        self._attr_friendly_name = name
         mapping_info = MEASUREMENT_MAPPING.get(measurement, {"unit": None, "device_class": None})
         self._attr_native_unit_of_measurement = mapping_info["unit"]
         self._attr_device_class = mapping_info["device_class"]
         self._attr_native_value = None
-        self._attr_friendly_name = self._attr_unique_id
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -94,13 +90,11 @@ class Unipi1WireSensor(SensorEntity):
             self._attr_available = True
             try:
                 if self._device == "temp":
-                    # Explicitly handle temperature sensor readings
                     self._attr_native_value = float(raw_value.get("value", 0))
                 elif isinstance(raw_value, dict):
                     if self._measurement in raw_value:
                         self._attr_native_value = float(raw_value.get(self._measurement, 0))
                     else:
-                        # For 'temp' device type which may not be a dict
                         self._attr_native_value = float(raw_value.get("value", 0))
                 else:
                     self._attr_native_value = float(raw_value)
