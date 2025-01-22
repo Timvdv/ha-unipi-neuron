@@ -1,7 +1,0 @@
-{
-    "name": "UniPi Neuron",
-    "zip_release": true,
-    "filename": "unipi_neuron.zip",
-    "domains": ["binary_sensor", "sensor", "light"],
-    "homeassistant": "2023.8.0"
-}

@@ -1,13 +1,14 @@
 {
+  "version": "1.0.0",
   "domain": "unipi_neuron",
   "name": "Unipi Neuron",
   "documentation": "https://github.com/Timvdv/ha-unipi-neuron",
+  "issue_tracker": "https://github.com/Timvdv/ha-unipi-neuron/issues",
   "requirements": [
     "evok-ws-client"
   ],
   "dependencies": ["zeroconf", "ssdp"],
   "after_dependencies": ["network"],
-  "version": "1.0.0",
   "codeowners": [
     "@marko2276",
     "@k3rn3l3rr0r",
@@ -24,6 +25,5 @@
     {
       "st": "urn:schemas-upnp-org:device:UniPiDevice:1"
     }
-  ],
-  "hacs": "1.0.0"
+  ]
 }
