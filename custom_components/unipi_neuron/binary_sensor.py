@@ -50,6 +50,7 @@ class UnipiBinarySensor(BinarySensorEntity):
         self._device = device
         self._state = None
         self._attr_unique_id = f"{entry_unique_id}_{device}_{circuit}"
+        self._attr_friendly_name = self._attr_unique_id
 
     @property
     def device_info(self) -> DeviceInfo:

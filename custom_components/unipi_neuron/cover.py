@@ -44,6 +44,7 @@ class UnipiCover(CoverEntity):
         self._tilt_value = None
         self._time_last_movement_start = 0
         self._stop_cover_timer = None
+        self._attr_friendly_name = self._attr_unique_id
 
     @property
     def device_info(self) -> DeviceInfo:

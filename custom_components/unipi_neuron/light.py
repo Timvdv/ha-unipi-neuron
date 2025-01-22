@@ -69,7 +69,7 @@ class UnipiLight(LightEntity):
 
         self._state = False
         self._attr_unique_id = f"{entry_unique_id}_{device}_{circuit}"
-
+        self._attr_friendly_name = self._attr_unique_id
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information for this entity to show up as a device."""

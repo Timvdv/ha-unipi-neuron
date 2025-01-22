@@ -65,6 +65,7 @@ class Unipi1WireSensor(SensorEntity):
         self._attr_native_unit_of_measurement = mapping_info["unit"]
         self._attr_device_class = mapping_info["device_class"]
         self._attr_native_value = None
+        self._attr_friendly_name = self._attr_unique_id
 
     @property
     def device_info(self) -> DeviceInfo:
