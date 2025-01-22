@@ -64,7 +64,7 @@ UnipiEvokWsClient.evok_state_get = evok_state_get
 
 async def evok_receive(self):
     try:
-        message = await self.ws.recv()
+        message = await self.websocket.recv()  # Fixed attribute name
         data = json.loads(message)
         _LOGGER.debug("Received raw message: %s, parsed: %s", message, data)
         return data
