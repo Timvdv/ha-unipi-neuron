@@ -56,8 +56,7 @@ class Unipi1WireSensor(SensorEntity):
         self._circuit = circuit
         self._measurement = measurement
         self._attr_unique_id = f"{device}_{circuit}_{measurement}"
-        self._attr_name = self._attr_unique_id
-        self._attr_friendly_name = name
+        self._attr_name = name
         mapping_info = MEASUREMENT_MAPPING.get(measurement, {"unit": None, "device_class": None})
         self._attr_native_unit_of_measurement = mapping_info["unit"]
         self._attr_device_class = mapping_info["device_class"]
