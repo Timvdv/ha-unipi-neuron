@@ -78,7 +78,7 @@ async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: in
                 async_dispatcher_send(hass, f"{DOMAIN}_{neuron.name}_{dev}_{circuit}")
 
             while True:
-                if not await neuron.evok_receive(handle_message=True, callback=callback):
+                if not await neuron.evok_receive(True, callback=callback):
                     break
 
         except ConnectionClosedError:
