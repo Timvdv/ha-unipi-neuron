@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import aiohttp
-from websockets.exceptions import ConnectionClosedError  # Added import for connection handling
+from websockets.exceptions import ConnectionClosedError
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -11,14 +11,12 @@ from homeassistant import config_entries
 from .const import DOMAIN
 from .config_flow import UnipiNeuronConfigFlow
 
-# Import everything from evok_ws_client
 from evok_ws_client import *
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ["binary_sensor", "light", "sensor"]
 
-# Add a cache property to UnipiEvokWsClient
 def cache_getter(self):
     if not hasattr(self, '_cache'):
         self._cache = {}
@@ -26,12 +24,10 @@ def cache_getter(self):
 
 UnipiEvokWsClient.cache = property(cache_getter)
 
-# Add a 'name' property if needed
 def name_getter(self):
     return getattr(self, '_name', "UniPi")
 UnipiEvokWsClient.name = property(name_getter)
 
-# Add fetch_rest_all method to UnipiEvokWsClient
 async def fetch_rest_all(self):
     url = f"http://{self._ip_addr}/rest/all"
     _LOGGER.debug("Fetching device info from %s", url)
@@ -53,7 +49,6 @@ async def fetch_rest_all(self):
 
 UnipiEvokWsClient.fetch_rest_all = fetch_rest_all
 
-# Extend evok_full_state_sync to include fetch_rest_all
 original_evok_full_state_sync = UnipiEvokWsClient.evok_full_state_sync
 
 async def evok_full_state_sync_with_rest(self):
@@ -62,7 +57,6 @@ async def evok_full_state_sync_with_rest(self):
 
 UnipiEvokWsClient.evok_full_state_sync = evok_full_state_sync_with_rest
 
-# Add evok_state_get method to UnipiEvokWsClient
 def evok_state_get(self, device, circuit):
     return self.cache.get((device, circuit))
 UnipiEvokWsClient.evok_state_get = evok_state_get
@@ -95,30 +89,41 @@ async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: in
         while True:
             try:
                 data = await neuron.evok_receive()
+                # Handle both list and single dict responses
+                messages = data if isinstance(data, list) else [data]
+                
+                for message in messages:
+                    device = message.get("dev")
+                    circuit = message.get("circuit")
+                    value = message.get("value")
+                    
+                    if None in (device, circuit):
+                        continue
+                        
+                    neuron.cache[(device, circuit)] = message
+                    evok_update_dispatch_send(neuron.name, device, circuit, value)
+
             except ConnectionClosedError as e:
                 _LOGGER.warning(
                     "Connection closed during receive from UniPi device '%s': %s",
                     neuron.name, e
                 )
                 break
+            except Exception as e:
+                _LOGGER.error("Unexpected error processing message: %s", str(e))
+                break
+
             if not data:
                 _LOGGER.warning(
                     "Connection lost to UniPi device '%s'. Reconnecting in %d seconds...",
                     neuron.name, reconnect_seconds
                 )
                 break
-
-            device = data.get("dev")
-            circuit = data.get("circuit")
-            value = data.get("value")
-            neuron.cache[(device, circuit)] = data
-            evok_update_dispatch_send(neuron.name, device, circuit, value)
             
 async def async_setup(hass: HomeAssistant, config: dict):
     _LOGGER.debug("async_setup called.")
     hass.data.setdefault(DOMAIN, {})
 
-    # Check for YAML-based configuration and initiate config flows for each device
     if DOMAIN in config:
         for entry in config[DOMAIN]:
             hass.async_create_task(
@@ -137,7 +142,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     dev_type = data.get("type", "CUSTOM")
     reconnect_time = data.get("reconnect_time", 30)
 
-    # Create an instance of UnipiEvokWsClient and set additional attributes
     neuron = UnipiEvokWsClient(ip_addr, dev_type, dev_name)
     neuron._ip_addr = ip_addr
     neuron._name = dev_name
