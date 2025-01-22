@@ -62,6 +62,10 @@ def evok_state_get(self, device, circuit):
 UnipiEvokWsClient.evok_state_get = evok_state_get
 
 async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: int):
+    def evok_update_dispatch_send(name, device, circuit, value):
+        _LOGGER.debug("SENDING Dispacher on %s %s", device, circuit)
+        async_dispatcher_send(hass, f"{DOMAIN}_{name}_{device}_{circuit}")
+
     """Maintain websocket connection and handle messages."""
     while True:
         try:
@@ -74,11 +78,8 @@ async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: in
             await neuron.evok_register_default_filter_dev()
             await neuron.evok_full_state_sync()
 
-            def callback(dev, circuit, value):
-                async_dispatcher_send(hass, f"{DOMAIN}_{neuron.name}_{dev}_{circuit}")
-
             while True:
-                if not await neuron.evok_receive(True, callback=callback):
+                if not await neuron.evok_receive(True, evok_update_dispatch_send):
                     break
 
         except ConnectionClosedError:
