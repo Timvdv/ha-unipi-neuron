@@ -1,5 +1,6 @@
 """Platform for light integration via Unipi."""
 import logging
+import asyncio
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
@@ -56,6 +57,7 @@ class UnipiLight(LightEntity):
         self._dimmable = (mode == "pwm")
         self._attr_unique_id = f"{device}_{circuit}"
         self._attr_name = name
+        self._lock = asyncio.Lock()
         
         object_id = f"unipi_{device}_{circuit}"
         self.entity_id = generate_entity_id("light.{}", object_id, hass=self._hass)
@@ -93,44 +95,46 @@ class UnipiLight(LightEntity):
 
     async def async_turn_on(self, **kwargs):
         """Instruct the light to turn on."""
-        try:
-            if self._dimmable:
-                new_brightness = kwargs.get(ATTR_BRIGHTNESS, 255)
-                duty_value = round(new_brightness / 255 * 100)
-                _LOGGER.info(
-                    "Turn ON dimmable light '%s' brightness=%d => duty=%d%%",
-                    self._attr_name, new_brightness, duty_value
-                )
-                dict_to_send = {"pwm_duty": str(duty_value)}
-                await self._unipi_hub.evok_send(self._device, self._circuit, dict_to_send)
-                self._brightness = new_brightness
-                self._state = True
-            else:
-                _LOGGER.info("Turn ON light '%s' (on_off mode)", self._attr_name)
-                await self._unipi_hub.evok_send(self._device, self._circuit, "1")
-                self._state = True
+        async with self._lock:
+            try:
+                if self._dimmable:
+                    new_brightness = kwargs.get(ATTR_BRIGHTNESS, 255)
+                    duty_value = round(new_brightness / 255 * 100)
+                    _LOGGER.info(
+                        "Turn ON dimmable light '%s' brightness=%d => duty=%d%%",
+                        self._attr_name, new_brightness, duty_value
+                    )
+                    dict_to_send = {"pwm_duty": str(duty_value)}
+                    await self._unipi_hub.evok_send(self._device, self._circuit, dict_to_send)
+                    self._brightness = new_brightness
+                    self._state = True
+                else:
+                    _LOGGER.info("Turn ON light '%s' (on_off mode)", self._attr_name)
+                    await self._unipi_hub.evok_send(self._device, self._circuit, "1")
+                    self._state = True
 
-            self.async_write_ha_state()
-        except ConnectionClosedError as e:
-            _LOGGER.warning("Connection closed when turning on light '%s': %s", self._attr_name, e)
+                self.async_write_ha_state()
+            except ConnectionClosedError as e:
+                _LOGGER.warning("Connection closed when turning on light '%s': %s", self._attr_name, e)
 
     async def async_turn_off(self, **kwargs):
         """Instruct the light to turn off."""
-        try:
-            if self._dimmable:
-                _LOGGER.info("Turn OFF dimmable light '%s' => set duty=0%%", self._attr_name)
-                dict_to_send = {"pwm_duty": "0"}
-                await self._unipi_hub.evok_send(self._device, self._circuit, dict_to_send)
-                self._brightness = 0
-                self._state = False
-            else:
-                _LOGGER.info("Turn OFF light '%s'", self._attr_name)
-                await self._unipi_hub.evok_send(self._device, self._circuit, "0")
-                self._state = False
+        async with self._lock:
+            try:
+                if self._dimmable:
+                    _LOGGER.info("Turn OFF dimmable light '%s' => set duty=0%%", self._attr_name)
+                    dict_to_send = {"pwm_duty": "0"}
+                    await self._unipi_hub.evok_send(self._device, self._circuit, dict_to_send)
+                    self._brightness = 0
+                    self._state = False
+                else:
+                    _LOGGER.info("Turn OFF light '%s'", self._attr_name)
+                    await self._unipi_hub.evok_send(self._device, self._circuit, "0")
+                    self._state = False
 
-            self.async_write_ha_state()
-        except ConnectionClosedError as e:
-            _LOGGER.warning("Connection closed when turning off light '%s': %s", self._attr_name, e)
+                self.async_write_ha_state()
+            except ConnectionClosedError as e:
+                _LOGGER.warning("Connection closed when turning off light '%s': %s", self._attr_name, e)
 
     async def async_added_to_hass(self):
         """Subscribe to dispatch updates for real-time changes."""
