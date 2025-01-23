@@ -84,8 +84,6 @@ class UnipiLight(LightEntity):
     @property
     def is_on(self):
         """Return true if light is on."""
-        if self._dimmable:
-            return self._brightness > 0
         return self._state
 
     @property
@@ -145,17 +143,19 @@ class UnipiLight(LightEntity):
     def _update_callback(self):
         """Receive update from the hub (dispatcher)."""
         raw_state = self._unipi_hub.evok_state_get(self._device, self._circuit)
-        if raw_state is None:
-            return
         if isinstance(raw_state, dict):
-            raw_state = raw_state.get("value")
+            raw_value = raw_state.get("value", 0)
+        else:
+            raw_value = raw_state if raw_state is not None else 0
+
         if self._dimmable:
-            if isinstance(raw_state, (int, float)) and raw_state > 0:
-                self._brightness = min(255, int(raw_state / 100 * 255))
+            if isinstance(raw_value, (int, float)) and raw_value > 0:
+                self._brightness = min(255, int(raw_value / 100 * 255))
                 self._state = True
             else:
                 self._brightness = 0
                 self._state = False
         else:
-            self._state = bool(raw_state)
+            self._state = bool(raw_value)
+
         self.async_write_ha_state()

@@ -28,8 +28,9 @@ OPER_STATE_ERROR = "error"
 class UnipiCover(CoverEntity):
     """Representation of a UniPi cover."""
 
-    def __init__(self, unipi_hub, entry_unique_id, name, port_up, port_down, full_close_time, full_open_time, tilt_change_time, min_reverse_time):
+    def __init__(self, hass, unipi_hub, entry_unique_id, name, port_up, port_down, full_close_time, full_open_time, tilt_change_time, min_reverse_time):
         """Initialize the cover."""
+        self._hass = hass
         self._unipi_hub = unipi_hub
         self._port_up = port_up
         self._port_down = port_down
@@ -46,7 +47,7 @@ class UnipiCover(CoverEntity):
         self._stop_cover_timer = None
 
         object_id = f"cover_{port_up}_{port_down}"
-        self.entity_id = generate_entity_id("cover.{}", object_id)
+        self.entity_id = generate_entity_id("cover.{}", object_id, hass=self._hass)
 
     @property
     def device_info(self) -> DeviceInfo:

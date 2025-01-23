@@ -58,7 +58,11 @@ async def evok_full_state_sync_with_rest(self):
 UnipiEvokWsClient.evok_full_state_sync = evok_full_state_sync_with_rest
 
 def evok_state_get(self, device, circuit):
-    return self.cache.get((device, circuit))
+    entry = self.cache.get((device, circuit))
+    if isinstance(entry, dict):
+        return entry.get("value")
+    return entry
+
 UnipiEvokWsClient.evok_state_get = evok_state_get
 
 async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: int):
