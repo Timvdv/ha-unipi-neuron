@@ -12,6 +12,12 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
+# Map EVOK versions to their input device types
+EVOK_INPUT_TYPES = {
+    2: ["input"],
+    3: ["di"]
+}
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -24,8 +30,11 @@ async def async_setup_entry(
         return
 
     sensors = []
+    # Get EVOK version from device type
+    evok_version = 3 if "M3" in unipi_hub._devtype else 2  # Adjust based on actual devtype
+    
     for (device, circuit), value in unipi_hub.cache.items():
-        if device in ("input", "di"):
+        if device in EVOK_INPUT_TYPES[evok_version]:
             if isinstance(value, dict) and "alias" in value:
                 name = value["alias"]
                 if name.startswith("al_"):
@@ -36,6 +45,7 @@ async def async_setup_entry(
 
     if sensors:
         async_add_entities(sensors)
+        _LOGGER.info("Added %d binary sensors for %s", len(sensors), unipi_hub.name)
     else:
         _LOGGER.debug("No binary sensor devices found for UniPi '%s'", unipi_hub.name)
 
@@ -74,7 +84,9 @@ class UnipiBinarySensor(BinarySensorEntity):
         """Register for dispatcher signals."""
         signal = f"{DOMAIN}_{self._unipi_hub.name}_{self._device}_{self._circuit}"
         _LOGGER.debug("Binary Sensor '%s': Connecting signal %s", self._attr_name, signal)
-        async_dispatcher_connect(self.hass, signal, self._update_callback)
+        self.async_on_remove(
+            async_dispatcher_connect(self.hass, signal, self._update_callback)
+        )
         self._update_callback()
 
     @callback
@@ -83,15 +95,15 @@ class UnipiBinarySensor(BinarySensorEntity):
         raw_state = self._unipi_hub.evok_state_get(self._device, self._circuit)
         _LOGGER.debug("Binary Sensor '%s': Raw state received: %s", self._attr_name, raw_state)
         
-        # Extract value from dict or use raw value
+        # Handle different response formats
         if isinstance(raw_state, dict):
             value = raw_state.get("value")
         else:
             value = raw_state
         
-        # Convert value to integer for proper boolean evaluation
+        # Convert to integer for reliable comparison
         try:
-            int_value = int(value)
+            int_value = int(float(value))  # Handle string representations
         except (TypeError, ValueError):
             int_value = 0
         

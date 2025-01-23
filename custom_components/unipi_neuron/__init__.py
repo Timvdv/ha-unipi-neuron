@@ -67,7 +67,17 @@ UnipiEvokWsClient.evok_state_get = evok_state_get
 
 async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: int):
     def evok_update_dispatch_send(name, device, circuit, value):
-        _LOGGER.debug("SENDING Dispacher on %s %s", device, circuit)
+        """Update cache and send dispatcher signal."""
+        # Update cache with new value
+        cache_key = (device, circuit)
+        current = neuron.cache.get(cache_key, {})
+        if isinstance(current, dict):
+            current["value"] = value
+        else:
+            current = {"value": value}
+        neuron.cache[cache_key] = current
+        
+        _LOGGER.debug("SENDING Dispatcher on %s %s with value %s", device, circuit, value)
         async_dispatcher_send(hass, f"{DOMAIN}_{name}_{device}_{circuit}")
 
     """Maintain websocket connection and handle messages."""
