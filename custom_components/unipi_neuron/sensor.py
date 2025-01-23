@@ -35,7 +35,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
         if device == "temp":
             name = alias if alias else f"UniPi {device} {circuit}"
-            sensors.append(Unipi1WireSensor(unipi_hub, entry.unique_id, name, device, circuit, measurement="temp"))
+            sensors.append(Unipi1WireSensor(hass, unipi_hub, entry.unique_id, name, device, circuit, measurement="temp"))
         elif device == "1wdevice" and isinstance(value, dict):
             for measurement in MEASUREMENT_MAPPING.keys():
                 if measurement in value:
