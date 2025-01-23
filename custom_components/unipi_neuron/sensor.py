@@ -85,26 +85,24 @@ class Unipi1WireSensor(SensorEntity):
 
     @callback
     def _update_callback(self):
-        """Receive update from UniPi hub dispatcher and refresh state."""
-        raw_value = self._unipi_hub.evok_state_get(self._device, self._circuit)
-        if raw_value is None:
+        """Handle updated data from UniPi hub."""
+        device_data = self._unipi_hub.evok_state_get(self._device, self._circuit)
+        
+        if not isinstance(device_data, dict):
             self._attr_available = False
-        else:
-            self._attr_available = True
-            try:
-                if self._device == "temp":
-                    self._attr_native_value = float(raw_value.get("value", 0))
-                elif isinstance(raw_value, dict):
-                    if self._measurement in raw_value:
-                        self._attr_native_value = float(raw_value.get(self._measurement, 0))
-                    else:
-                        self._attr_native_value = float(raw_value.get("value", 0))
-                else:
-                    self._attr_native_value = float(raw_value)
-            except (TypeError, ValueError):
-                _LOGGER.warning(
-                    "Could not parse sensor reading '%s' for measurement '%s' from %s",
-                    raw_value, self._measurement, self._attr_name
-                )
-                self._attr_native_value = None
+            self.async_write_ha_state()
+            return
+
+        self._attr_available = True
+        try:
+            # Handle different device types
+            if self._device == "temp":
+                self._attr_native_value = float(device_data.get("value", 0))
+            elif self._device == "1wdevice":
+                # Directly get the measurement key from 1wdevice data
+                self._attr_native_value = float(device_data.get(self._measurement, 0))
+        except (TypeError, ValueError) as err:
+            _LOGGER.warning("Error parsing %s data: %s", self._attr_name, err)
+            self._attr_native_value = None
+            
         self.async_write_ha_state()
