@@ -58,10 +58,7 @@ async def evok_full_state_sync_with_rest(self):
 UnipiEvokWsClient.evok_full_state_sync = evok_full_state_sync_with_rest
 
 def evok_state_get(self, device, circuit):
-    entry = self.cache.get((device, circuit))
-    if isinstance(entry, dict):
-        return entry.get("value")
-    return entry
+    return self.cache.get((device, circuit))
 
 UnipiEvokWsClient.evok_state_get = evok_state_get
 
