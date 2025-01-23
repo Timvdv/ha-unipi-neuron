@@ -83,10 +83,17 @@ class UnipiBinarySensor(BinarySensorEntity):
         raw_state = self._unipi_hub.evok_state_get(self._device, self._circuit)
         _LOGGER.debug("Binary Sensor '%s': Raw state received: %s", self._attr_name, raw_state)
         
+        # Extract value from dict or use raw value
         if isinstance(raw_state, dict):
             value = raw_state.get("value")
         else:
             value = raw_state
-            
-        self._state = bool(value)
+        
+        # Convert value to integer for proper boolean evaluation
+        try:
+            int_value = int(value)
+        except (TypeError, ValueError):
+            int_value = 0
+        
+        self._state = int_value == 1
         self.async_write_ha_state()
