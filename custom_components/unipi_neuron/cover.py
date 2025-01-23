@@ -89,6 +89,7 @@ class UnipiCover(CoverEntity):
         if self._state == OPER_STATE_CLOSING:
             await self.async_stop_cover()
         await self._set_relay_state(self._port_up, True)
+        self._unipi_hub.cache[('relay', self._port_up)] = {'value': 1}
         self._state = OPER_STATE_OPENING
         self._time_last_movement_start = datetime.now()
         self.async_write_ha_state()
@@ -98,6 +99,7 @@ class UnipiCover(CoverEntity):
         if self._state == OPER_STATE_OPENING:
             await self.async_stop_cover()
         await self._set_relay_state(self._port_down, True)
+        self._unipi_hub.cache[('relay', self._port_down)] = {'value': 1}
         self._state = OPER_STATE_CLOSING
         self._time_last_movement_start = datetime.now()
         self.async_write_ha_state()
@@ -107,6 +109,8 @@ class UnipiCover(CoverEntity):
         self._cancel_timer()
         await self._set_relay_state(self._port_up, False)
         await self._set_relay_state(self._port_down, False)
+        self._unipi_hub.cache[('relay', self._port_up)] = {'value': 0}
+        self._unipi_hub.cache[('relay', self._port_down)] = {'value': 0}
         self._state = OPER_STATE_IDLE
         self.async_write_ha_state()
 

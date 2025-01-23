@@ -54,6 +54,7 @@ class UnipiBinarySensor(BinarySensorEntity):
 
         object_id = f"unipi_{device}_{circuit}"
         self.entity_id = generate_entity_id("binary_sensor.{}", object_id, hass=self._hass)
+
     @property
     def device_info(self) -> DeviceInfo:
         """Return device info so HA groups all sensors under one device."""
@@ -81,10 +82,11 @@ class UnipiBinarySensor(BinarySensorEntity):
         """State has changed"""
         raw_state = self._unipi_hub.evok_state_get(self._device, self._circuit)
         _LOGGER.debug("Binary Sensor '%s': Raw state received: %s", self._attr_name, raw_state)
+        
         if isinstance(raw_state, dict):
             value = raw_state.get("value")
         else:
             value = raw_state
-        _LOGGER.debug("Binary Sensor '%s': Extracted value: %s", self._attr_name, value)
-        self._state = (value == 1)
+            
+        self._state = bool(value)
         self.async_write_ha_state()
