@@ -106,11 +106,15 @@ class UnipiLight(LightEntity):
                     )
                     dict_to_send = {"pwm_duty": str(duty_value)}
                     await self._unipi_hub.evok_send(self._device, self._circuit, dict_to_send)
+                    # Update cache immediately
+                    self._unipi_hub.cache[(self._device, self._circuit)] = {'value': duty_value}
                     self._brightness = new_brightness
                     self._state = True
                 else:
                     _LOGGER.info("Turn ON light '%s' (on_off mode)", self._attr_name)
                     await self._unipi_hub.evok_send(self._device, self._circuit, "1")
+                    # Update cache immediately
+                    self._unipi_hub.cache[(self._device, self._circuit)] = {'value': 1}
                     self._state = True
 
                 self.async_write_ha_state()
@@ -125,11 +129,15 @@ class UnipiLight(LightEntity):
                     _LOGGER.info("Turn OFF dimmable light '%s' => set duty=0%%", self._attr_name)
                     dict_to_send = {"pwm_duty": "0"}
                     await self._unipi_hub.evok_send(self._device, self._circuit, dict_to_send)
+                    # Update cache immediately
+                    self._unipi_hub.cache[(self._device, self._circuit)] = {'value': 0}
                     self._brightness = 0
                     self._state = False
                 else:
                     _LOGGER.info("Turn OFF light '%s'", self._attr_name)
                     await self._unipi_hub.evok_send(self._device, self._circuit, "0")
+                    # Update cache immediately
+                    self._unipi_hub.cache[(self._device, self._circuit)] = {'value': 0}
                     self._state = False
 
                 self.async_write_ha_state()
