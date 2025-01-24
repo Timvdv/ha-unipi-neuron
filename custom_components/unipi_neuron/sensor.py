@@ -16,6 +16,7 @@ MEASUREMENT_MAPPING = {
     "humidity": {"unit": "%", "device_class": "humidity"},
     "vad": {"unit": "V", "device_class": None},
     "vdd": {"unit": "V", "device_class": None},
+    "voltage": {"unit": "V", "device_class": "voltage"},
 }
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
@@ -41,13 +42,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
                 if measurement in value:
                     meas_name = f"{alias} {measurement}" if alias else f"UniPi {device} {circuit} {measurement}"
                     sensors.append(Unipi1WireSensor(hass, unipi_hub, entry.unique_id, meas_name, device, circuit, measurement))
+        elif device == "ai":
+            name = alias if alias else f"UniPi {device} {circuit}"
+            sensors.append(Unipi1WireSensor(hass, unipi_hub, entry.unique_id, name, device, circuit, measurement="voltage"))
+    
     if sensors:
         async_add_entities(sensors)
     else:
-        _LOGGER.debug("No 1-wire or temp sensors found for UniPi '%s'", unipi_hub.name)
+        _LOGGER.debug("No 1-wire, temp or analog input sensors found for UniPi '%s'", unipi_hub.name)
 
 class Unipi1WireSensor(SensorEntity):
-    """Representation of a UniPi 1-Wire or temp sensor for a specific measurement."""
+    """Representation of a UniPi 1-Wire, temp or analog input sensor."""
 
     def __init__(self, hass, unipi_hub, entry_unique_id, name, device, circuit, measurement):
         """Initialize the sensor."""
@@ -100,8 +105,9 @@ class Unipi1WireSensor(SensorEntity):
             if self._device == "temp":
                 self._attr_native_value = float(device_data.get("value", 0))
             elif self._device == "1wdevice":
-                # Directly get the measurement key from 1wdevice data
                 self._attr_native_value = float(device_data.get(self._measurement, 0))
+            elif self._device == "ai" and self._measurement == "voltage":
+                self._attr_native_value = float(device_data.get("value", 0))
         except (TypeError, ValueError) as err:
             _LOGGER.warning("Error parsing %s data: %s", self._attr_name, err)
             self._attr_native_value = None
