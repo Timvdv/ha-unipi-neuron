@@ -68,6 +68,8 @@ async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: in
         cache_key = (device, circuit)
         current = neuron.cache.get(cache_key, {})
 
+        _LOGGER.debug("Incoming WebSocket message: %s/%s - %s", device, circuit, value)
+
         # Handle different value types
         if isinstance(value, dict):
             # Merge dictionaries for multi-field devices like 1wdevice
