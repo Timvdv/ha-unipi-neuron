@@ -25,5 +25,7 @@
     {
       "st": "urn:schemas-upnp-org:device:UniPiDevice:1"
     }
-  ]
+  ],
+  "integration_type": "hub",
+  "loggers": ["custom_components.unipi_neuron"]
 }

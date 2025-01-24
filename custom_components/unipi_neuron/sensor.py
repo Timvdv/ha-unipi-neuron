@@ -77,10 +77,11 @@ class Unipi1WireSensor(SensorEntity):
         )
 
     async def async_added_to_hass(self):
-        """Register dispatcher signal for updates."""
+        """Register callbacks when entity is added."""
         signal = f"{DOMAIN}_{self._unipi_hub.name}_{self._device}_{self._circuit}"
-        _LOGGER.debug("UniPi Sensor '%s' listening on dispatcher signal: %s", self._attr_name, signal)
+        _LOGGER.debug("Connecting signal: %s for UniPi Sensor '%s'", signal, self._attr_name)
         async_dispatcher_connect(self.hass, signal, self._update_callback)
+        # Initial state update
         self._update_callback()
 
     @callback
