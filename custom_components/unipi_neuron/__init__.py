@@ -63,31 +63,19 @@ def evok_state_get(self, device, circuit):
 UnipiEvokWsClient.evok_state_get = evok_state_get
 
 async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: int):
-    def evok_update_dispatch_send(name, device, circuit, data):
+    def evok_update_dispatch_send(name, device, circuit, value):
         """Update cache and send dispatcher signal."""
-        # Handle both list and single-dict message formats
-        if not isinstance(data, list):
-            data = [data]
-
-        for dev_info in data:
-            # Handle different message structures
-            if isinstance(dev_info, dict):
-                device_type = dev_info.get("dev")
-                circuit_id = dev_info.get("circuit")
-                if not (device_type and circuit_id):
-                    continue
-
-                # Update cache with full data dictionary
-                cache_key = (device_type, circuit_id)
-                current = neuron.cache.get(cache_key, {})
-                if isinstance(current, dict):
-                    current.update(dev_info)
-                else:
-                    current = dev_info.copy()
-                neuron.cache[cache_key] = current
-                
-                _LOGGER.debug("SENDING Dispatcher on %s %s with data %s", device_type, circuit_id, dev_info)
-                async_dispatcher_send(hass, f"{DOMAIN}_{name}_{device_type}_{circuit_id}")
+        # Update cache with new value
+        cache_key = (device, circuit)
+        current = neuron.cache.get(cache_key, {})
+        if isinstance(current, dict):
+            current["value"] = value
+        else:
+            current = {"value": value}
+        neuron.cache[cache_key] = current
+        
+        _LOGGER.debug("SENDING Dispatcher on %s %s with value %s", device, circuit, value)
+        async_dispatcher_send(hass, f"{DOMAIN}_{name}_{device}_{circuit}")
 
     """Maintain websocket connection and handle messages."""
     while True:
@@ -122,7 +110,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
                 hass.config_entries.flow.async_init(
                     DOMAIN,
                     context={"source": config_entries.SOURCE_IMPORT},
-                    data=entry,
+                    data=entry
                 )
             )
     return True
