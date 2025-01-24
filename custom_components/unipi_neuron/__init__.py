@@ -65,27 +65,19 @@ UnipiEvokWsClient.evok_state_get = evok_state_get
 async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: int):
     def evok_update_dispatch_send(name, device, circuit, value):
         """Update cache and send dispatcher signal."""
+        
+        _LOGGER.debug("Incoming WebSocket message: %s/%s - %s", device, circuit, value)
+        
+        # Update cache with new value
         cache_key = (device, circuit)
         current = neuron.cache.get(cache_key, {})
-
-        _LOGGER.debug("Incoming WebSocket message: %s/%s - %s", device, circuit, value)
-
-        # Handle different value types
-        if isinstance(value, dict):
-            # Merge dictionaries for multi-field devices like 1wdevice
-            if isinstance(current, dict):
-                current.update(value)
-            else:
-                current = value.copy()
+        if isinstance(current, dict):
+            current["value"] = value
         else:
-            # Handle single-value updates
-            if isinstance(current, dict):
-                current["value"] = value
-            else:
-                current = {"value": value}
-
+            current = {"value": value}
         neuron.cache[cache_key] = current
-        _LOGGER.debug("Updated cache for %s/%s: %s", device, circuit, current)
+        
+        _LOGGER.debug("SENDING Dispatcher on %s %s with value %s", device, circuit, value)
         async_dispatcher_send(hass, f"{DOMAIN}_{name}_{device}_{circuit}")
 
     """Maintain websocket connection and handle messages."""
@@ -156,21 +148,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if neuron:
         await neuron.evok_close()
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-
-# Add missing WebSocket subscription for all sensor types
-async def evok_register_default_filter_dev(self):
-    """Register filters for all relevant device types."""
-    devices_to_watch = ["relay", "input", "di", "temp", "ai", "1wdevice"]
-    for dev in devices_to_watch:
-        await self.evok_send(
-            "ws",
-            "config",
-            {
-                "cmd": "filter",
-                "dev": dev,
-                "circuit": "all"
-            }
-        )
-    _LOGGER.debug("Registered WebSocket filters for: %s", ", ".join(devices_to_watch))
-
-UnipiEvokWsClient.evok_register_default_filter_dev = evok_register_default_filter_dev
