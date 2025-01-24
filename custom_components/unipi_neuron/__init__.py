@@ -156,3 +156,21 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if neuron:
         await neuron.evok_close()
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+# Add missing WebSocket subscription for all sensor types
+async def evok_register_default_filter_dev(self):
+    """Register filters for all relevant device types."""
+    devices_to_watch = ["relay", "input", "di", "temp", "ai", "1wdevice"]
+    for dev in devices_to_watch:
+        await self.evok_send(
+            "ws",
+            "config",
+            {
+                "cmd": "filter",
+                "dev": dev,
+                "circuit": "all"
+            }
+        )
+    _LOGGER.debug("Registered WebSocket filters for: %s", ", ".join(devices_to_watch))
+
+UnipiEvokWsClient.evok_register_default_filter_dev = evok_register_default_filter_dev
