@@ -95,6 +95,7 @@ class Unipi1WireSensor(SensorEntity):
         device_data = self._unipi_hub.evok_state_get(self._device, self._circuit)
         
         if not isinstance(device_data, dict):
+            _LOGGER.debug("Sensor '%s' received invalid data: %s", self._attr_name, device_data)
             self._attr_available = False
             self.async_write_ha_state()
             return
@@ -103,13 +104,17 @@ class Unipi1WireSensor(SensorEntity):
         try:
             # Handle different device types
             if self._device == "temp":
-                self._attr_native_value = float(device_data.get("value", 0))
+                raw_value = device_data.get("value", 0)
+                self._attr_native_value = float(raw_value) if raw_value not in [None, ""] else 0.0
             elif self._device == "1wdevice":
-                self._attr_native_value = float(device_data.get(self._measurement, 0))
+                raw_value = device_data.get(self._measurement, 0)
+                self._attr_native_value = float(raw_value) if raw_value not in [None, ""] else 0.0
             elif self._device == "ai" and self._measurement == "voltage":
-                self._attr_native_value = float(device_data.get("value", 0))
+                raw_value = device_data.get("value", 0)
+                self._attr_native_value = float(raw_value) if raw_value not in [None, ""] else 0.0
+            _LOGGER.debug("Sensor '%s' updated: %s = %s", self._attr_name, self._measurement, self._attr_native_value)
         except (TypeError, ValueError) as err:
-            _LOGGER.warning("Error parsing %s data: %s", self._attr_name, err)
+            _LOGGER.warning("Error parsing %s data: %s (raw value: %s)", self._attr_name, err, raw_value)
             self._attr_native_value = None
             
         self.async_write_ha_state()

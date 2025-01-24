@@ -95,17 +95,24 @@ class UnipiBinarySensor(BinarySensorEntity):
         raw_state = self._unipi_hub.evok_state_get(self._device, self._circuit)
         _LOGGER.debug("Binary Sensor '%s': Raw state received: %s", self._attr_name, raw_state)
         
-        # Handle different response formats
-        if isinstance(raw_state, dict):
+        # Handle list structures (unlikely but possible)
+        if isinstance(raw_state, list) and len(raw_state) > 0:
+            first_item = raw_state[0]
+            if isinstance(first_item, dict):
+                value = first_item.get("value")
+            else:
+                value = first_item
+        elif isinstance(raw_state, dict):
             value = raw_state.get("value")
         else:
             value = raw_state
-        
+
         # Convert to integer for reliable comparison
         try:
-            int_value = int(float(value))  # Handle string representations
+            int_value = int(float(value)) if value not in [None, ""] else 0
         except (TypeError, ValueError):
             int_value = 0
-        
+            _LOGGER.warning("Invalid value for binary sensor '%s': %s", self._attr_name, value)
+            
         self._state = int_value == 1
         self.async_write_ha_state()
