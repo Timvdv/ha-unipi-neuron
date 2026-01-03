@@ -29,7 +29,7 @@ OPER_STATE_ERROR = "error"
 class UnipiCover(CoverEntity):
     """Representation of a UniPi cover."""
 
-    def __init__(self, hass, unipi_hub, entry_unique_id, name, port_up, port_down, full_close_time, full_open_time, tilt_change_time, min_reverse_time):
+    def __init__(self, hass, unipi_hub, entry_unique_id, device_slug, name, port_up, port_down, full_close_time, full_open_time, tilt_change_time, min_reverse_time):
         """Initialize the cover."""
         self._hass = hass
         self._unipi_hub = unipi_hub
@@ -39,6 +39,7 @@ class UnipiCover(CoverEntity):
         self._full_open_time = full_open_time
         self._tilt_change_time = tilt_change_time
         self._min_reverse_time = min_reverse_time
+        self._device_slug = device_slug
         self._attr_unique_id = f"{entry_unique_id}_cover_{port_up}_{port_down}"
         self._attr_name = name
         self._state = OPER_STATE_IDLE
@@ -47,7 +48,7 @@ class UnipiCover(CoverEntity):
         self._time_last_movement_start = 0
         self._stop_cover_timer = None
 
-        object_id = f"unipi_{slugify(self._unipi_hub.name)}_cover_{port_up}_{port_down}"
+        object_id = f"unipi_{self._device_slug}_cover_{port_up}_{port_down}"
         self.entity_id = generate_entity_id("cover.{}", object_id, hass=self._hass)
 
     @property
@@ -162,6 +163,8 @@ async def async_setup_entry(
         return
 
     entry_unique_id = entry.unique_id or entry.entry_id
+    device_name = entry.title or entry.data.get("name") or unipi_hub.name or entry.entry_id
+    device_slug = slugify(device_name)
 
     covers = []
     async_add_entities(covers)

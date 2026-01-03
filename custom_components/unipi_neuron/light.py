@@ -29,6 +29,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         return
 
     entry_unique_id = entry.unique_id or entry.entry_id
+    device_name = entry.title or entry.data.get("name") or unipi_hub.name or entry.entry_id
+    device_slug = slugify(device_name)
 
     lights = []
     for (device, circuit), value in unipi_hub.cache.items():
@@ -41,7 +43,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             else:
                 name = f"UniPi Light {device} {circuit}"
             lights.append(
-                UnipiLight(hass, unipi_hub, entry_unique_id, name, circuit, device, mode)
+                UnipiLight(hass, unipi_hub, entry_unique_id, device_slug, name, circuit, device, mode)
             )
 
     async_add_entities(lights)
@@ -51,18 +53,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 class UnipiLight(LightEntity):
     """Representation of a Light attached to a UniPi relay or digital output."""
 
-    def __init__(self, hass, unipi_hub, entry_unique_id, name, circuit, device, mode):
+    def __init__(self, hass, unipi_hub, entry_unique_id, device_slug, name, circuit, device, mode):
         """Initialize the UniPi Light."""
         self._hass = hass
         self._unipi_hub = unipi_hub
         self._circuit = circuit
         self._device = device
         self._dimmable = (mode == "pwm")
+        self._device_slug = device_slug
         self._attr_unique_id = f"{entry_unique_id}_{device}_{circuit}"
         self._attr_name = name
         self._lock = asyncio.Lock()
         
-        object_id = f"unipi_{slugify(self._unipi_hub.name)}_{device}_{circuit}"
+        object_id = f"unipi_{self._device_slug}_{device}_{circuit}"
         self.entity_id = generate_entity_id("light.{}", object_id, hass=self._hass)
 
         if self._dimmable:
