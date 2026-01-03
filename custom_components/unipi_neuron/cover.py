@@ -11,6 +11,7 @@ from homeassistant.components.cover import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo, generate_entity_id
+from homeassistant.util import slugify
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.event import async_call_later
@@ -38,7 +39,7 @@ class UnipiCover(CoverEntity):
         self._full_open_time = full_open_time
         self._tilt_change_time = tilt_change_time
         self._min_reverse_time = min_reverse_time
-        self._attr_unique_id = f"cover_{port_up}_{port_down}"
+        self._attr_unique_id = f"{entry_unique_id}_cover_{port_up}_{port_down}"
         self._attr_name = name
         self._state = OPER_STATE_IDLE
         self._position = None
@@ -46,7 +47,7 @@ class UnipiCover(CoverEntity):
         self._time_last_movement_start = 0
         self._stop_cover_timer = None
 
-        object_id = f"cover_{port_up}_{port_down}"
+        object_id = f"unipi_{slugify(self._unipi_hub.name)}_cover_{port_up}_{port_down}"
         self.entity_id = generate_entity_id("cover.{}", object_id, hass=self._hass)
 
     @property
@@ -159,6 +160,8 @@ async def async_setup_entry(
     if not unipi_hub:
         _LOGGER.error("No UniPi client found for entry %s", entry.title)
         return
+
+    entry_unique_id = entry.unique_id or entry.entry_id
 
     covers = []
     async_add_entities(covers)

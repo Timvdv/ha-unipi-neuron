@@ -10,6 +10,7 @@ from homeassistant.components.light import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo, generate_entity_id
+from homeassistant.util import slugify
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from websockets.exceptions import ConnectionClosedError
@@ -27,6 +28,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         _LOGGER.error("No UniPi client found for entry %s", entry.title)
         return
 
+    entry_unique_id = entry.unique_id or entry.entry_id
+
     lights = []
     for (device, circuit), value in unipi_hub.cache.items():
         if device in LIGHT_DEVICES:
@@ -38,7 +41,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             else:
                 name = f"UniPi Light {device} {circuit}"
             lights.append(
-                UnipiLight(hass, unipi_hub, entry.unique_id, name, circuit, device, mode)
+                UnipiLight(hass, unipi_hub, entry_unique_id, name, circuit, device, mode)
             )
 
     async_add_entities(lights)
@@ -55,11 +58,11 @@ class UnipiLight(LightEntity):
         self._circuit = circuit
         self._device = device
         self._dimmable = (mode == "pwm")
-        self._attr_unique_id = f"{device}_{circuit}"
+        self._attr_unique_id = f"{entry_unique_id}_{device}_{circuit}"
         self._attr_name = name
         self._lock = asyncio.Lock()
         
-        object_id = f"unipi_{device}_{circuit}"
+        object_id = f"unipi_{slugify(self._unipi_hub.name)}_{device}_{circuit}"
         self.entity_id = generate_entity_id("light.{}", object_id, hass=self._hass)
 
         if self._dimmable:

@@ -5,6 +5,7 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo, generate_entity_id
+from homeassistant.util import slugify
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
@@ -29,6 +30,8 @@ async def async_setup_entry(
         _LOGGER.error("No UniPi client found for entry %s", entry.title)
         return
 
+    entry_unique_id = entry.unique_id or entry.entry_id
+
     sensors = []
     # Get EVOK version from device type
     evok_version = 3 if "M3" in unipi_hub._devtype else 2  # Adjust based on actual devtype
@@ -41,7 +44,7 @@ async def async_setup_entry(
                     name = name[3:]
             else:
                 name = f"UniPi {device} {circuit}"
-            sensors.append(UnipiBinarySensor(hass, unipi_hub, entry.unique_id, name, circuit, device))
+            sensors.append(UnipiBinarySensor(hass, unipi_hub, entry_unique_id, name, circuit, device))
 
     if sensors:
         async_add_entities(sensors)
@@ -58,11 +61,11 @@ class UnipiBinarySensor(BinarySensorEntity):
         self._unipi_hub = unipi_hub
         self._circuit = circuit
         self._device = device
-        self._attr_unique_id = f"{device}_{circuit}"
+        self._attr_unique_id = f"{entry_unique_id}_{device}_{circuit}"
         self._attr_name = name
         self._state = None
 
-        object_id = f"unipi_{device}_{circuit}"
+        object_id = f"unipi_{slugify(self._unipi_hub.name)}_{device}_{circuit}"
         self.entity_id = generate_entity_id("binary_sensor.{}", object_id, hass=self._hass)
 
     @property
