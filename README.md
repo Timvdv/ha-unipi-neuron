@@ -5,6 +5,8 @@ The system connects to the Unipi device via WebSocket (part of a separate [pytho
 
 I was planning (this is still on my wishlist) to integrate the component directly into the home-assistant repo but to get things available for others to use, play around and extend, I decided to just release it as a barebone repo for now.
 
+Changelog: see `CHANGELOG.md`.
+
 ## Updates
 
 ### 1.0.1 - 2026-01-04
