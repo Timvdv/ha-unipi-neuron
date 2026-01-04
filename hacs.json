@@ -1,6 +1,5 @@
 {
     "name": "Unipi Neuron",
     "homeassistant": "2024.12.0",
-    "hacs": "2.0.2",
-    "changelog": "CHANGELOG.md"
+    "hacs": "2.0.1"
 }
