@@ -73,6 +73,9 @@ async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: in
         current = neuron.cache.get(cache_key, {})
         if isinstance(payload, dict):
             merged = dict(current) if isinstance(current, dict) else {}
+            value = payload.get("value")
+            if isinstance(value, dict):
+                merged.update(value)
             merged.update(payload)
             neuron.cache[cache_key] = merged
         else:
