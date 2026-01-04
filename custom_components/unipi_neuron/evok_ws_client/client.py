@@ -60,6 +60,12 @@ class UnipiEvokWsClient:
         if not decode:
             return message
 
+        if isinstance(message, dict):
+            message = [message]
+        elif not isinstance(message, list):
+            _LOGGER.debug("Evok Received unexpected payload type: %s", type(message))
+            return message
+
         for section in message:
             if "dev" in section.keys():
                 device = section["dev"]
@@ -104,12 +110,16 @@ class UnipiEvokWsClient:
         await self._evok_send_over_ws(cmdjson)
 
     ''' This should be extended allow configuration of filters '''
-    async def evok_register_default_filter_dev(self):
+    async def evok_register_default_filter_dev(self, use_default_filter = False):
         # Register filter to get notification changes from the contoller
         # Currently supported filter on device level only
         cmd = {}
         cmd["cmd"] = "filter"
-        cmd["devices"] = "relay", "led", "input", "ro", "do", "di", "1wdevice", "temp", "ai"
+        if use_default_filter:
+            # "default" must be first to avoid EVOK rejecting the filter message
+            cmd["devices"] = "default", "relay"
+        else:
+            cmd["devices"] = "relay", "led", "input", "ro", "do", "di", "1wdevice", "temp", "ai"
         cmdjson = json.dumps(cmd)
         _LOGGER.debug("Setting Filter: %s", cmdjson)
         await self._evok_send_over_ws(cmdjson)

@@ -97,7 +97,7 @@ async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: in
                 continue
 
             _LOGGER.info("Connected to %s", neuron.name)
-            await neuron.evok_register_default_filter_dev()
+            await neuron.evok_register_default_filter_dev(use_default_filter=True)
             await neuron.evok_full_state_sync()
 
             while True:
