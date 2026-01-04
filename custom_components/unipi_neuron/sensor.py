@@ -111,7 +111,13 @@ class Unipi1WireSensor(SensorEntity):
                 self._attr_native_value = float(raw_value) if raw_value not in [None, ""] else 0.0
             elif self._device == "1wdevice":
                 raw_value = device_data.get(self._measurement, 0)
-                self._attr_native_value = float(raw_value) if raw_value not in [None, ""] else 0.0
+                if raw_value not in [None, ""]:
+                    value = float(raw_value)
+                    if self._measurement == "humidity":
+                        value = round(value, 2)
+                    self._attr_native_value = value
+                else:
+                    self._attr_native_value = 0.0
             elif self._device == "ai" and self._measurement == "voltage":
                 raw_value = device_data.get("value", 0)
                 self._attr_native_value = float(raw_value) if raw_value not in [None, ""] else 0.0
