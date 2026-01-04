@@ -11,7 +11,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .const import DOMAIN
 from .config_flow import UnipiNeuronConfigFlow
-from evok_ws_client import *
+from .evok_ws_client import *
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,21 +63,26 @@ def evok_state_get(self, device, circuit):
 UnipiEvokWsClient.evok_state_get = evok_state_get
 
 async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: int):
-    def evok_update_dispatch_send(name, device, circuit, value):
+    def evok_update_dispatch_send(name, device, circuit, payload):
         """Update cache and send dispatcher signal."""
         
-        _LOGGER.debug("Incoming WebSocket message: %s/%s - %s", device, circuit, value)
+        _LOGGER.debug("Incoming WebSocket message: %s/%s - %s", device, circuit, payload)
         
         # Update cache with new value
         cache_key = (device, circuit)
         current = neuron.cache.get(cache_key, {})
-        if isinstance(current, dict):
-            current["value"] = value
+        if isinstance(payload, dict):
+            merged = dict(current) if isinstance(current, dict) else {}
+            merged.update(payload)
+            neuron.cache[cache_key] = merged
         else:
-            current = {"value": value}
-        neuron.cache[cache_key] = current
+            if isinstance(current, dict):
+                current["value"] = payload
+                neuron.cache[cache_key] = current
+            else:
+                neuron.cache[cache_key] = {"value": payload}
         
-        _LOGGER.debug("SENDING Dispatcher on %s %s with value %s", device, circuit, value)
+        _LOGGER.debug("SENDING Dispatcher on %s %s with value %s", device, circuit, payload)
         async_dispatcher_send(hass, f"{DOMAIN}_{name}_{device}_{circuit}")
 
     """Maintain websocket connection and handle messages."""

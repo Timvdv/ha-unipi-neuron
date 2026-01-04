@@ -5,7 +5,7 @@
   "documentation": "https://github.com/Timvdv/ha-unipi-neuron",
   "issue_tracker": "https://github.com/Timvdv/ha-unipi-neuron/issues",
   "requirements": [
-    "evok-ws-client"
+    "websockets"
   ],
   "dependencies": ["zeroconf", "ssdp"],
   "after_dependencies": ["network"],
