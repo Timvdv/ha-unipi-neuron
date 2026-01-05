@@ -10,14 +10,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from .const import DOMAIN
+from .evok_utils import EVOK_INPUT_DEVICE_TYPES
 
 _LOGGER = logging.getLogger(__name__)
-
-# Map EVOK versions to their input device types
-EVOK_INPUT_TYPES = {
-    2: ["input"],
-    3: ["di"]
-}
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -33,11 +28,10 @@ async def async_setup_entry(
     entry_unique_id = entry.unique_id or entry.entry_id
 
     sensors = []
-    # Get EVOK version from device type
-    evok_version = 3 if "M3" in unipi_hub._devtype else 2  # Adjust based on actual devtype
-    
+    input_devices = getattr(unipi_hub, "_input_device_types", EVOK_INPUT_DEVICE_TYPES)
+
     for (device, circuit), value in unipi_hub.cache.items():
-        if device in EVOK_INPUT_TYPES[evok_version]:
+        if device in input_devices:
             if isinstance(value, dict) and "alias" in value:
                 name = value["alias"]
                 if name.startswith("al_"):

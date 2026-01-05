@@ -12,6 +12,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from .const import DOMAIN
 from .config_flow import UnipiNeuronConfigFlow
 from .evok_ws_client import *
+from .evok_utils import detect_input_device_types
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -99,6 +100,9 @@ async def evok_connection(hass, neuron: UnipiEvokWsClient, reconnect_seconds: in
             _LOGGER.info("Connected to %s", neuron.name)
             await neuron.evok_register_default_filter_dev(use_default_filter=True)
             await neuron.evok_full_state_sync()
+            neuron._input_device_types = detect_input_device_types(neuron.cache)
+            if "di" in neuron._input_device_types:
+                await neuron.evok_register_default_filter_dev(use_default_filter=False)
 
             while True:
                 if not await neuron.evok_receive(True, evok_update_dispatch_send):
@@ -142,6 +146,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             raise ConfigEntryNotReady(f"Could not connect to {ip_addr}")
             
         await neuron.evok_full_state_sync()
+        neuron._input_device_types = detect_input_device_types(neuron.cache)
     except Exception as err:
         raise ConfigEntryNotReady(f"Connection error: {err}") from err
 

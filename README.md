@@ -7,12 +7,6 @@ I was planning (this is still on my wishlist) to integrate the component directl
 
 Changelog: see `CHANGELOG.md`.
 
-## Updates
-
-### 1.0.1 - 2026-01-04
-- WARNING: To support multiple devices, this update will rename all entities.
-- Merge `evok-ws-client` to local and add real-time 1-wire updates via websocket payload merge.
-
 
 
 # Installation
